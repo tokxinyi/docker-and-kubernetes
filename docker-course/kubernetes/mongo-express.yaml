@@ -1,0 +1,62 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-express
+  labels:
+    app: mongo-express
+
+# specification for the deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-express
+  template:
+    metadata: 
+      labels:
+        app: mongo-express
+    # specification for the containers, possible to open multiple ports in one container
+    spec:
+      containers:
+      - name: mongo-express
+        image: mongo-express
+        ports:
+        - containerPort: 8081
+        env:
+        - name: ME_CONFIG_MONGODB_ADMINUSERNAME
+          valueFrom:
+              secretKeyRef:
+                name: mongodb-secret
+                key: mongo-root-username
+        - name: ME_CONFIG_MONGODB_ADMINPASSWORD
+          valueFrom:
+              secretKeyRef:
+                name: mongodb-secret
+                key: mongo-root-password
+        - name: ME_CONFIG_MONGODB_SERVER
+          valueFrom:
+              configMapKeyRef:
+                name: mongodb-configmap
+                key: database_url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-express-service
+spec:
+  # to connect to Pod through label
+  selector:
+    app: mongo-express
+  # internal service also acts as a load balancer
+  # type LoadBalancer assigns service an external IP address so that it accepts external requests
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      # service port
+      port: 8081
+      # containerPort of the deployment
+      targetPort: 8081
+      # port which the external IP address will open, will need to access from the browser
+      # must be between 30000-32767
+      nodePort: 30000
